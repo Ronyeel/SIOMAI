@@ -17,7 +17,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Header from '../../components/Header';
 import BackButton from '../../components/BackButton';
 import { useAuth } from '../../hooks/useAuth';
-import { API_URL } from '../../config/env';
+import { ApiService } from '../../services/apiService';
 
 // Modular components
 import AccountCard from '../../components/accounts/AccountCard';
@@ -54,17 +54,10 @@ export default function AccountsScreen() {
   const fetchUsers = async () => {
     try {
       setIsFetching(true);
-      const response = await fetch(
-        `${API_URL}/api/admin/users?adminEmail=${encodeURIComponent(user?.email || '')}`
-      );
-      const data = await response.json();
-      if (response.ok) {
-        setAllUsers(data.users || []);
-      } else {
-        console.error('Fetch users failed:', data.error);
-      }
+      const data = await ApiService.admin.getUsers(user?.email || '');
+      setAllUsers(data.users || []);
     } catch (error) {
-      console.error('Fetch users error:', error);
+      console.error('Fetch users error:', error.message);
     } finally {
       setIsFetching(false);
     }
@@ -93,35 +86,22 @@ export default function AccountsScreen() {
   };
 
   const handleUpdateStatus = async () => {
-    const targetUser = selectedUser; // snapshot before closing options
+    const targetUser = selectedUser;
     if (!targetUser) return;
     setOptionsVisible(false);
     const newStatus = targetUser.user_status === 'Active' ? 'Pending' : 'Active';
     try {
-      const response = await fetch(`${API_URL}/api/admin/update-user-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          adminEmail: user.email,
-          targetEmail: targetUser.user_email,
-          status: newStatus,
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        Alert.alert('Success', `User status updated to ${newStatus}.`);
-        fetchUsers();
-      } else {
-        Alert.alert('Error', data.error || 'Failed to update user status.');
-      }
+      await ApiService.admin.updateUserStatus(user.email, targetUser.user_email, newStatus);
+      Alert.alert('Success', `User status updated to ${newStatus}.`);
+      fetchUsers();
     } catch (error) {
-      console.error('Update status error:', error);
+      console.error('Update status error:', error.message);
+      Alert.alert('Error', error.message || 'Failed to update user status.');
     }
   };
 
   const handleDeleteUser = () => {
-    const targetUser = selectedUser; // snapshot before closing options
+    const targetUser = selectedUser;
     if (!targetUser) return;
     setOptionsVisible(false);
     Alert.alert(
@@ -134,24 +114,12 @@ export default function AccountsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/api/admin/delete-user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  adminEmail: user.email,
-                  targetEmail: targetUser.user_email,
-                }),
-              });
-
-              const data = await response.json();
-              if (response.ok) {
-                Alert.alert('Deleted', 'Account deleted successfully.');
-                fetchUsers();
-              } else {
-                Alert.alert('Error', data.error || 'Failed to delete user.');
-              }
+              await ApiService.admin.deleteUser(user.email, targetUser.user_email);
+              Alert.alert('Deleted', 'Account deleted successfully.');
+              fetchUsers();
             } catch (error) {
-              console.error('Delete user error:', error);
+              console.error('Delete user error:', error.message);
+              Alert.alert('Error', error.message || 'Failed to delete user.');
             }
           },
         },
@@ -159,7 +127,6 @@ export default function AccountsScreen() {
     );
   };
 
-  // Form submission handler (Create or Edit)
   const handleFormSubmit = async (formData) => {
     const { name, email, password, role, status } = formData;
 
@@ -176,54 +143,28 @@ export default function AccountsScreen() {
     try {
       setIsSubmitting(true);
       if (formMode === 'create') {
-        const response = await fetch(`${API_URL}/api/admin/create-user`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            adminEmail: user.email,
-            name: name.trim(),
-            email: email.trim(),
-            password: password,
-            role,
-            status,
-          }),
+        await ApiService.admin.createUser(user.email, {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role,
+          status,
         });
-
-        const data = await response.json();
-        if (response.ok) {
-          Alert.alert('Success', 'User account created successfully.');
-          setFormModalVisible(false);
-          fetchUsers();
-        } else {
-          Alert.alert('Error', data.error || 'Failed to create user.');
-        }
+        Alert.alert('Success', 'User account created successfully.');
       } else {
-        // Edit Mode
-        const response = await fetch(`${API_URL}/api/admin/update-user`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            adminEmail: user.email,
-            targetEmail: selectedUser.user_email,
-            name: name.trim(),
-            password: password.trim() ? password : undefined,
-            role,
-            status,
-          }),
+        await ApiService.admin.updateUser(user.email, selectedUser.user_email, {
+          name: name.trim(),
+          password: password.trim() ? password : undefined,
+          role,
+          status,
         });
-
-        const data = await response.json();
-        if (response.ok) {
-          Alert.alert('Success', 'User account updated successfully.');
-          setFormModalVisible(false);
-          fetchUsers();
-        } else {
-          Alert.alert('Error', data.error || 'Failed to update user.');
-        }
+        Alert.alert('Success', 'User account updated successfully.');
       }
+      setFormModalVisible(false);
+      fetchUsers();
     } catch (error) {
-      console.error('Submit form error:', error);
-      Alert.alert('Error', 'Communication error with backend.');
+      console.error('Submit form error:', error.message);
+      Alert.alert('Error', error.message || 'Communication error with backend.');
     } finally {
       setIsSubmitting(false);
     }

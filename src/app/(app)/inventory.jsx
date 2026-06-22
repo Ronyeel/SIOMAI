@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,8 +11,9 @@ import {
   Alert,
   RefreshControl,
   Modal,
+  Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Header from '../../components/Header';
 import BackButton from '../../components/BackButton';
@@ -33,6 +34,25 @@ import InventoryFormModal from '../../components/inventory/InventoryFormModal';
 
 export default function InventoryScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+
+  // Hide the bottom tab bar while this screen is active
+  useFocusEffect(
+    useCallback(() => {
+      navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
+      return () => {
+        navigation.getParent()?.setOptions({
+          tabBarStyle: {
+            backgroundColor: '#D00D14',
+            borderTopWidth: 0,
+            height: Platform.OS === 'ios' ? 88 : 72,
+            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+            paddingTop: 8,
+          },
+        });
+      };
+    }, [navigation])
+  );
 
   // State
   const [items, setItems] = useState(INITIAL_ITEMS);

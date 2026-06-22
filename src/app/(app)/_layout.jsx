@@ -12,14 +12,23 @@ export default function AppLayout() {
           headerShown: false,
           tabBarActiveTintColor: '#FFF',
           tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
+          tabBarShowLabel: false,
           tabBarStyle: {
             backgroundColor: '#D00D14',
             borderTopWidth: 0,
-            height: Platform.OS === 'ios' ? 85 : 65,
-            paddingBottom: Platform.OS === 'ios' ? 30 : 12,
-            paddingTop: 12,
+            height: Platform.OS === 'ios' ? 88 : 72,
+            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+            paddingTop: 8,
           },
-          tabBarShowLabel: false,
+          tabBarItemStyle: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+          tabBarIconStyle: {
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
         }}
       >
         <Tabs.Screen
@@ -71,6 +80,35 @@ export default function AppLayout() {
           name="inventory"
           options={{
             href: null,
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="branch_management"
+          options={{
+            href: null,
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="franchise"
+          options={{
+            href: null,
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="notification"
+          options={{
+            href: null,
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="supply"
+          options={{
+            href: null,
+            tabBarButton: () => null,
           }}
         />
       </Tabs>

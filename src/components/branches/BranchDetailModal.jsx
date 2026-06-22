@@ -57,7 +57,7 @@ export default function BranchDetailModal({ visible, selectedBranch, users = [],
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Address</Text>
-              <Text style={styles.detailValue} numberOfLines={2} style={styles.addressValue}>
+              <Text numberOfLines={2} style={[styles.detailValue, styles.addressValue]}>
                 {selectedBranch.branch_address}
               </Text>
             </View>
