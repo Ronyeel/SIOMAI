@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider } from '../context/AuthContext';
 import { useAuth } from '../hooks/useAuth';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import SplashView from '../components/SplashView';
 import { DrawerProvider } from '../context/DrawerContext';
 
@@ -18,6 +19,21 @@ function InitialLayout() {
   const [showSplash, setShowSplash] = useState(true);
 
   const inAuthGroup = segments[0] === '(auth)';
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && NavigationBar) {
+      if (typeof NavigationBar.setBackgroundColorAsync === 'function') {
+        NavigationBar.setBackgroundColorAsync('#D00D14').catch((err) =>
+          console.warn('NavigationBar error:', err)
+        );
+      }
+      if (typeof NavigationBar.setButtonStyleAsync === 'function') {
+        NavigationBar.setButtonStyleAsync('light').catch((err) =>
+          console.warn('NavigationBar style error:', err)
+        );
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;

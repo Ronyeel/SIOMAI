@@ -75,6 +75,26 @@ export const ApiService = {
 
     updateBranchStatus: (adminEmail, targetId, status) => 
       request('/api/admin/update-branch-status', 'POST', { adminEmail, targetId, status }),
+
+    // Inventory endpoints
+    getInventory: (adminEmail) =>
+      request(`/api/admin/inventory?adminEmail=${encodeURIComponent(adminEmail)}`),
+
+    createInventoryItem: (adminEmail, itemData) =>
+      request('/api/admin/create-inventory-item', 'POST', { adminEmail, ...itemData }),
+
+    updateInventoryItem: (adminEmail, itemData) =>
+      request('/api/admin/update-inventory-item', 'POST', { adminEmail, ...itemData }),
+
+    deleteInventoryItem: (adminEmail, itemId) =>
+      request('/api/admin/delete-inventory-item', 'POST', { adminEmail, id: itemId }),
+
+    getInventoryCategories: (adminEmail) =>
+      request(`/api/admin/inventory-categories?adminEmail=${encodeURIComponent(adminEmail)}`),
+
+    getBranchNames: (adminEmail) =>
+      request(`/api/admin/branch-names?adminEmail=${encodeURIComponent(adminEmail)}`),
+
   },
 
   // Auth Operations (Express endpoints)

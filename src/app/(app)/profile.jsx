@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import Header from '../../components/Header';
+import BackButton from '../../components/BackButton';
 
 // Modular Profile Tab Components
 import ProfileTabPersonal from '../../components/profile/ProfileTabPersonal';
@@ -39,8 +40,11 @@ export default function ProfileScreen() {
 
         {/* ── Page Content ──────────────────────── */}
         <View style={styles.pageContent}>
-          {/* Title */}
-          <Text style={styles.pageTitle}>Account{'\n'}Information</Text>
+          {/* Title Row with Back Button */}
+          <View style={styles.titleRow}>
+            <BackButton />
+            <Text style={styles.pageTitle}>Account{' '}Information</Text>
+          </View>
 
           {/* ── Tab Bar (underline style) ──────────── */}
           <View style={styles.tabRow}>
@@ -101,12 +105,17 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     backgroundColor: '#F6F6F6',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
   pageTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
     color: '#1A1A1A',
-    lineHeight: 34,
-    marginBottom: 24,
+    flex: 1,
   },
   tabRow: {
     flexDirection: 'row',

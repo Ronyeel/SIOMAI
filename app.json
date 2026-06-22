@@ -33,7 +33,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-navigation-bar",
+        {
+          "style": "light",
+          "backgroundColor": "#D00D14"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

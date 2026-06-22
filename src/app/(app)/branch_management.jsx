@@ -36,13 +36,7 @@ export default function BranchManagementScreen() {
       navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
       return () => {
         navigation.getParent()?.setOptions({
-          tabBarStyle: {
-            backgroundColor: '#D00D14',
-            borderTopWidth: 0,
-            height: Platform.OS === 'ios' ? 88 : 72,
-            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-            paddingTop: 8,
-          },
+          tabBarStyle: undefined,
         });
       };
     }, [navigation])
@@ -251,13 +245,6 @@ export default function BranchManagementScreen() {
             <Text style={styles.screenTitle}>Branch Monitoring</Text>
             <Text style={styles.screenSubtitle}>Track your branches and analytics</Text>
           </View>
-          <TouchableOpacity
-            style={styles.headerFab}
-            onPress={() => { setFormMode('add'); setFormModalVisible(true); }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={22} color="#FFF" />
-          </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
@@ -325,11 +312,18 @@ export default function BranchManagementScreen() {
           )}
         </View>
 
-        {/* Bottom spacer */}
+        {/* Bottom spacer for FAB */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB hidden — add is in the header now */}
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => { setFormMode('add'); setFormModalVisible(true); }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={32} color="#FFF" />
+      </TouchableOpacity>}
 
       {/* ITEM ACTION OPTIONS POPUP */}
       <Modal
@@ -428,19 +422,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 3,
   },
-  headerFab: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#D00D14',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#D00D14',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
-    marginTop: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 99,
   },
 
   // ── Search ─────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -17,12 +17,11 @@ import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Header from '../../components/Header';
 import BackButton from '../../components/BackButton';
+import { useAuth } from '../../hooks/useAuth';
+import { ApiService } from '../../services/apiService';
 
 // Modular Imports
 import {
-  INITIAL_ITEMS,
-  CATEGORIES,
-  BRANCHES,
   calculateStats,
 } from '../../data/mockInventory';
 
@@ -35,6 +34,7 @@ import InventoryFormModal from '../../components/inventory/InventoryFormModal';
 export default function InventoryScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { user } = useAuth();
 
   // Hide the bottom tab bar while this screen is active
   useFocusEffect(
@@ -42,25 +42,53 @@ export default function InventoryScreen() {
       navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
       return () => {
         navigation.getParent()?.setOptions({
-          tabBarStyle: {
-            backgroundColor: '#D00D14',
-            borderTopWidth: 0,
-            height: Platform.OS === 'ios' ? 88 : 72,
-            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-            paddingTop: 8,
-          },
+          tabBarStyle: undefined,
         });
       };
     }, [navigation])
   );
 
   // State
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState('All Branch');
   const [statusFilter, setStatusFilter] = useState('Show All');
   const [categoryFilter, setCategoryFilter] = useState('All Category');
   const [isFetching, setIsFetching] = useState(false);
+
+  const fetchInventory = async () => {
+    try {
+      setIsFetching(true);
+      const data = await ApiService.admin.getInventory(user?.email || '');
+      setItems(data.inventory || []);
+    } catch (error) {
+      console.error('Fetch inventory error:', error.message);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const fetchMetadata = async () => {
+    try {
+      const [catData, brData] = await Promise.all([
+        ApiService.admin.getInventoryCategories(user?.email || ''),
+        ApiService.admin.getBranchNames(user?.email || ''),
+      ]);
+      setCategories(catData.categories || []);
+      setBranches(brData.branches || []);
+    } catch (error) {
+      console.error('Fetch metadata error:', error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.email) {
+      fetchInventory();
+      fetchMetadata();
+    }
+  }, [user]);
 
   // Dropdown UI visibility states
   const [branchDropdownVisible, setBranchDropdownVisible] = useState(false);
@@ -78,10 +106,9 @@ export default function InventoryScreen() {
   const [popupY, setPopupY] = useState(100);
 
   const onRefresh = () => {
-    setIsFetching(true);
-    setTimeout(() => {
-      setIsFetching(false);
-    }, 1000);
+    if (user?.email) {
+      fetchInventory();
+    }
   };
 
   // Kebab option opening handler
@@ -115,9 +142,18 @@ export default function InventoryScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setItems((prev) => prev.filter((i) => i.id !== item.id));
-            Alert.alert('Deleted', 'Item removed successfully.');
+          onPress: async () => {
+            try {
+              setIsFetching(true);
+              await ApiService.admin.deleteInventoryItem(user.email, item.id);
+              Alert.alert('Deleted', 'Item removed successfully.');
+              fetchInventory();
+            } catch (error) {
+              console.error('Delete item error:', error.message);
+              Alert.alert('Error', error.message || 'Failed to delete item.');
+            } finally {
+              setIsFetching(false);
+            }
           },
         },
       ]
@@ -125,10 +161,10 @@ export default function InventoryScreen() {
   };
 
   // Handle Form Submission (Add or Edit)
-  const handleFormSubmit = (formData) => {
-    const { name, type, category, stock, unit, price, branch, status } = formData;
+  const handleFormSubmit = async (formData) => {
+    const { name, type, category, stock, unit, price, branch } = formData;
 
-    if (!name.trim() || !stock.trim()) {
+    if (!name.trim() || !stock.toString().trim()) {
       Alert.alert('Validation Error', 'Item Name and Stock amount are required.');
       return;
     }
@@ -145,53 +181,45 @@ export default function InventoryScreen() {
       return;
     }
 
-    if (formMode === 'add') {
-      const created = {
-        id: Date.now().toString(),
-        name: name.trim(),
-        type,
-        category,
-        stock: stockNum,
-        unit,
-        price: priceNum,
-        branch,
-        status,
-        icon: type === 'product' ? 'fast-food-outline' : 'leaf-outline',
-        iconColor: status === 'Normal' ? '#34C759' : '#FF9500',
-        bgColor: status === 'Normal' ? '#E8F5E9' : '#FFF9F0',
-      };
-      setItems((prev) => [created, ...prev]);
-      Alert.alert('Success', 'Inventory item added successfully.');
-    } else {
-      // Edit mode — snapshot id to avoid stale closure
-      const editId = selectedItem?.id;
-      if (!editId) {
-        Alert.alert('Error', 'Could not identify item to edit.');
-        return;
+    try {
+      setIsFetching(true);
+      if (formMode === 'edit') {
+        const editId = selectedItem?.id;
+        if (!editId) {
+          Alert.alert('Error', 'Could not identify item to edit.');
+          return;
+        }
+        await ApiService.admin.updateInventoryItem(user.email, {
+          id: editId,
+          name: name.trim(),
+          type,
+          category,
+          stock: stockNum,
+          unit,
+          price: priceNum,
+          branch,
+        });
+        Alert.alert('Success', 'Item updated successfully.');
+      } else {
+        await ApiService.admin.createInventoryItem(user.email, {
+          name: name.trim(),
+          type,
+          category,
+          stock: stockNum,
+          unit,
+          price: priceNum,
+          branch,
+        });
+        Alert.alert('Success', 'Inventory item added successfully.');
       }
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === editId
-            ? {
-                ...i,
-                name: name.trim(),
-                type,
-                category,
-                stock: stockNum,
-                unit,
-                price: priceNum,
-                branch,
-                status,
-                iconColor: status === 'Normal' ? '#34C759' : '#FF9500',
-                bgColor: status === 'Normal' ? '#E8F5E9' : '#FFF9F0',
-              }
-            : i
-        )
-      );
-      Alert.alert('Success', 'Item updated successfully.');
+      setFormModalVisible(false);
+      fetchInventory();
+    } catch (error) {
+      console.error('Form submit error:', error.message);
+      Alert.alert('Error', error.message || 'Operation failed.');
+    } finally {
+      setIsFetching(false);
     }
-
-    setFormModalVisible(false);
   };
 
   // Filter items by branch, status and search query
@@ -352,7 +380,7 @@ export default function InventoryScreen() {
       <DropdownFilterModal
         visible={branchDropdownVisible}
         title="Select Branch"
-        options={['All Branch', ...BRANCHES]}
+        options={['All Branch', ...branches]}
         selectedOption={branchFilter}
         onSelect={(val) => {
           setBranchFilter(val);
@@ -378,7 +406,7 @@ export default function InventoryScreen() {
       <DropdownFilterModal
         visible={categoryDropdownVisible}
         title="Select Category"
-        options={['All Category', ...CATEGORIES]}
+        options={['All Category', ...categories]}
         selectedOption={categoryFilter}
         onSelect={(val) => {
           setCategoryFilter(val);
@@ -423,6 +451,8 @@ export default function InventoryScreen() {
         visible={formModalVisible}
         mode={formMode}
         initialData={selectedItem}
+        categories={categories}
+        branches={branches}
         onSubmit={handleFormSubmit}
         onClose={() => setFormModalVisible(false)}
       />

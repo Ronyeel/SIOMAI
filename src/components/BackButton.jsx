@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 
 /**
  * Consistent back button used across all app screens.
- * Matches the styled back button from the auth (forgot-password) flow.
+ * Plain red chevron with no background box.
  */
 export default function BackButton({ onPress, style }) {
   const router = useRouter();
@@ -14,23 +14,22 @@ export default function BackButton({ onPress, style }) {
     <TouchableOpacity
       onPress={onPress || (() => router.back())}
       style={[styles.backButton, style]}
-      activeOpacity={0.7}
-      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      activeOpacity={0.6}
+    
     >
-      <Ionicons name="chevron-back" size={24} color="#E90000" />
+      <Ionicons name="chevron-back" size={32} color="#D00D14" />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#120504',
-    borderWidth: 1.5,
-    borderColor: '#E90000',
+    width: 38,
+    height: 38,
+    borderRadius: 16,
+    backgroundColor: '#111',
     justifyContent: 'center',
     alignItems: 'center',
   },
 });
+

@@ -10,12 +10,14 @@ import {
   Platform,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CATEGORIES, BRANCHES, STOCK_STATUSES } from '../../data/mockInventory';
+import { STOCK_STATUSES } from '../../data/mockInventory';
 
 export default function InventoryFormModal({
   visible,
   mode = 'add',
   initialData = null,
+  categories = [],
+  branches = [],
   onSubmit,
   onClose,
 }) {
@@ -111,7 +113,7 @@ export default function InventoryFormModal({
 
             <Text style={styles.inputLabel}>Category</Text>
             <View style={styles.chipsRow}>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat}
                   style={[styles.chip, category === cat && styles.chipActive]}
@@ -171,7 +173,7 @@ export default function InventoryFormModal({
 
             <Text style={styles.inputLabel}>Branch Assigned</Text>
             <View style={styles.chipsRow}>
-              {BRANCHES.map((br) => (
+              {branches.map((br) => (
                 <TouchableOpacity
                   key={br}
                   style={[styles.chip, branch === br && styles.chipActive]}

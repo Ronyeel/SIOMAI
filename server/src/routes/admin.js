@@ -354,4 +354,349 @@ router.post('/update-branch-status', async (req, res) => {
   }
 });
 
+// Endpoint 14: List inventory items
+router.get('/inventory', async (req, res) => {
+  try {
+    const { data: inventory, error: dbErr } = await supabase
+      .from('inventory')
+      .select(`
+        inventory_id,
+        inventory_stock_level,
+        inventory_minimum_stock,
+        inventory_maximum_stock,
+        inventory_unit_of_measure,
+        inventory_last_updated,
+        product:product_id (
+          product_id,
+          product_name,
+          product_category,
+          product_price
+        ),
+        branch:branch_id (
+          branch_id,
+          branch_name
+        )
+      `)
+      .order('inventory_id', { ascending: true });
+
+    if (dbErr) {
+      console.error('Failed to fetch inventory:', dbErr);
+      return res.status(500).json({ error: 'Failed to retrieve inventory items.' });
+    }
+
+    const mapped = (inventory || []).map(item => {
+      const prod = item.product || {};
+      const br = item.branch || {};
+      
+      const isProduct = prod.product_category !== 'Ingredients' && parseFloat(prod.product_price || 0) > 0;
+      const type = isProduct ? 'product' : 'ingredient';
+
+      const stock = parseFloat(item.inventory_stock_level || 0);
+      const minStock = parseFloat(item.inventory_minimum_stock || 0);
+      const status = stock <= minStock ? 'Low Stock' : 'Normal';
+
+      return {
+        id: item.inventory_id.toString(),
+        name: prod.product_name || 'Unnamed Product',
+        type,
+        category: prod.product_category || 'General',
+        stock,
+        unit: item.inventory_unit_of_measure || 'pcs',
+        price: parseFloat(prod.product_price || 0),
+        branch: br.branch_name || 'Unknown Branch',
+        status,
+        icon: type === 'product' ? 'fast-food-outline' : 'leaf-outline',
+        iconColor: status === 'Low Stock' ? '#FF9500' : '#34C759',
+        bgColor: status === 'Low Stock' ? '#FFF9F0' : '#E8F5E9',
+      };
+    });
+
+    res.json({ success: true, inventory: mapped });
+  } catch (err) {
+    console.error('[list-inventory] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Endpoint 15: Create inventory item
+router.post('/create-inventory-item', async (req, res) => {
+  const { name, type, category, stock, unit, price, branch } = req.body;
+  if (!name || !type || !category || stock === undefined || !unit || !branch) {
+    return res.status(400).json({ error: 'All fields are required.' });
+  }
+
+  try {
+    // 1. Check if product already exists
+    let { data: prod, error: prodFindErr } = await supabase
+      .from('product')
+      .select('*')
+      .eq('product_name', name.trim())
+      .maybeSingle();
+
+    if (prodFindErr) {
+      console.error('Find product error:', prodFindErr);
+    }
+
+    if (!prod) {
+      // Create new product in product table
+      const { data: newProd, error: prodErr } = await supabase
+        .from('product')
+        .insert({
+          product_name: name.trim(),
+          product_category: category.trim(),
+          product_price: type === 'product' ? parseFloat(price || 0) : 0,
+          product_status: 'Available'
+        })
+        .select()
+        .single();
+
+      if (prodErr) {
+        console.error('Failed to create product record:', prodErr);
+        return res.status(500).json({ error: 'Failed to create product record.' });
+      }
+      prod = newProd;
+    }
+
+    // 2. Find branch ID from branch name
+    const { data: br } = await supabase
+      .from('branches')
+      .select('branch_id')
+      .eq('branch_name', branch.trim())
+      .maybeSingle();
+    
+    const branchId = br ? br.branch_id : 3; // Moreno Branch fallback
+
+    // 3. Insert inventory record
+    const stockNum = parseFloat(stock);
+    const status = stockNum < 20 ? 'Low Stock' : 'Normal';
+
+    const { data: createdItem, error: dbErr } = await supabase
+      .from('inventory')
+      .insert({
+        product_id: prod.product_id,
+        branch_id: branchId,
+        inventory_stock_level: stockNum,
+        inventory_minimum_stock: 20,
+        inventory_maximum_stock: 200,
+        inventory_unit_of_measure: unit.trim(),
+        inventory_last_updated: new Date().toISOString()
+      })
+      .select(`
+        inventory_id,
+        inventory_stock_level,
+        inventory_minimum_stock,
+        inventory_maximum_stock,
+        inventory_unit_of_measure,
+        inventory_last_updated,
+        product:product_id (
+          product_id,
+          product_name,
+          product_category,
+          product_price
+        ),
+        branch:branch_id (
+          branch_id,
+          branch_name
+        )
+      `)
+      .single();
+
+    if (dbErr) {
+      console.error('Failed to create inventory item:', dbErr);
+      return res.status(500).json({ error: 'Failed to create inventory item.' });
+    }
+
+    const mapped = {
+      id: createdItem.inventory_id.toString(),
+      name: prod.product_name,
+      type,
+      category: prod.product_category,
+      stock: parseFloat(createdItem.inventory_stock_level),
+      unit: createdItem.inventory_unit_of_measure,
+      price: parseFloat(prod.product_price || 0),
+      branch: branch.trim(),
+      status,
+      icon: type === 'product' ? 'fast-food-outline' : 'leaf-outline',
+      iconColor: status === 'Low Stock' ? '#FF9500' : '#34C759',
+      bgColor: status === 'Low Stock' ? '#FFF9F0' : '#E8F5E9',
+    };
+
+    res.json({ success: true, item: mapped });
+  } catch (err) {
+    console.error('[create-inventory-item] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Endpoint 16: Update inventory item
+router.post('/update-inventory-item', async (req, res) => {
+  const { id, name, type, category, stock, unit, price, branch } = req.body;
+  if (!id || !name || !type || !category || stock === undefined || !unit || !branch) {
+    return res.status(400).json({ error: 'All fields are required.' });
+  }
+
+  try {
+    // 1. Get existing inventory item to find the linked product_id
+    const { data: existingInv, error: findInvErr } = await supabase
+      .from('inventory')
+      .select('product_id')
+      .eq('inventory_id', parseInt(id))
+      .single();
+
+    if (findInvErr || !existingInv) {
+      console.error('Find existing inventory item error:', findInvErr);
+      return res.status(404).json({ error: 'Inventory item not found.' });
+    }
+
+    // 2. Update product details
+    const { error: prodErr } = await supabase
+      .from('product')
+      .update({
+        product_name: name.trim(),
+        product_category: category.trim(),
+        product_price: type === 'product' ? parseFloat(price || 0) : 0,
+      })
+      .eq('product_id', existingInv.product_id);
+
+    if (prodErr) {
+      console.error('Failed to update product details:', prodErr);
+      return res.status(500).json({ error: 'Failed to update product details.' });
+    }
+
+    // 3. Find branch ID from branch name
+    const { data: br } = await supabase
+      .from('branches')
+      .select('branch_id')
+      .eq('branch_name', branch.trim())
+      .maybeSingle();
+    
+    const branchId = br ? br.branch_id : 3;
+
+    // 4. Update inventory record
+    const stockNum = parseFloat(stock);
+    const status = stockNum < 20 ? 'Low Stock' : 'Normal';
+
+    const { data: updatedItem, error: dbErr } = await supabase
+      .from('inventory')
+      .update({
+        branch_id: branchId,
+        inventory_stock_level: stockNum,
+        inventory_unit_of_measure: unit.trim(),
+        inventory_last_updated: new Date().toISOString()
+      })
+      .eq('inventory_id', parseInt(id))
+      .select(`
+        inventory_id,
+        inventory_stock_level,
+        inventory_minimum_stock,
+        inventory_maximum_stock,
+        inventory_unit_of_measure,
+        inventory_last_updated,
+        product:product_id (
+          product_id,
+          product_name,
+          product_category,
+          product_price
+        ),
+        branch:branch_id (
+          branch_id,
+          branch_name
+        )
+      `)
+      .single();
+
+    if (dbErr) {
+      console.error('Failed to update inventory record:', dbErr);
+      return res.status(500).json({ error: 'Failed to update inventory record.' });
+    }
+
+    const mapped = {
+      id: updatedItem.inventory_id.toString(),
+      name: name.trim(),
+      type,
+      category: category.trim(),
+      stock: stockNum,
+      unit: unit.trim(),
+      price: type === 'product' ? parseFloat(price || 0) : 0,
+      branch: branch.trim(),
+      status,
+      icon: type === 'product' ? 'fast-food-outline' : 'leaf-outline',
+      iconColor: status === 'Low Stock' ? '#FF9500' : '#34C759',
+      bgColor: status === 'Low Stock' ? '#FFF9F0' : '#E8F5E9',
+    };
+
+    res.json({ success: true, item: mapped });
+  } catch (err) {
+    console.error('[update-inventory-item] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Endpoint 17: Delete inventory item
+router.post('/delete-inventory-item', async (req, res) => {
+  const { id } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: 'ID is required.' });
+  }
+
+  try {
+    const { error: dbErr } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('inventory_id', parseInt(id));
+
+    if (dbErr) {
+      console.error('Failed to delete inventory item:', dbErr);
+      return res.status(500).json({ error: 'Failed to delete inventory item.' });
+    }
+
+    res.json({ success: true, message: 'Inventory item deleted successfully.' });
+  } catch (err) {
+    console.error('[delete-inventory-item] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Endpoint 18: Get distinct product categories from DB
+router.get('/inventory-categories', async (req, res) => {
+  try {
+    const { data, error: dbErr } = await supabase
+      .from('product')
+      .select('product_category');
+
+    if (dbErr) {
+      console.error('Failed to fetch categories:', dbErr);
+      return res.status(500).json({ error: 'Failed to fetch categories.' });
+    }
+
+    const categories = [...new Set((data || []).map(r => r.product_category).filter(Boolean))];
+    res.json({ success: true, categories });
+  } catch (err) {
+    console.error('[inventory-categories] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Endpoint 19: Get branch names from DB
+router.get('/branch-names', async (req, res) => {
+  try {
+    const { data, error: dbErr } = await supabase
+      .from('branches')
+      .select('branch_name')
+      .order('branch_name', { ascending: true });
+
+    if (dbErr) {
+      console.error('Failed to fetch branch names:', dbErr);
+      return res.status(500).json({ error: 'Failed to fetch branch names.' });
+    }
+
+    const branches = (data || []).map(r => r.branch_name).filter(Boolean);
+    res.json({ success: true, branches });
+  } catch (err) {
+    console.error('[branch-names] Error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 export default router;
+
