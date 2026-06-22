@@ -41,3 +41,11 @@ example
 # generated native folders
 /ios
 /android
+
+# Environment variables
+.env
+.env.*
+server/.env
+
+# Scratch/dev test scripts
+scratch/

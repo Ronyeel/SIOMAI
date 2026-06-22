@@ -1,56 +1,73 @@
-# Welcome to your Expo app 👋
+# SIOMAI - Corporate React Native Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A professional-grade React Native application built on top of **Expo (SDK 56)** using file-based routing with **Expo Router** and written entirely in **JavaScript (ES6+) and JSX**.
 
-## Get started
+This repository is structured following corporate design patterns, separating business logic, state management, layouts, and reusable user interface elements.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📁 Repository Structure
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+/src
+├── app/                  # Route layouts and screens (Expo Router Root)
+│   ├── (app)/            # Protected route group (requires authentication)
+│   │   ├── _layout.jsx   # Layout wrapper for authenticated screens
+│   │   └── index.jsx     # Main Dashboard screen
+│   ├── (auth)/           # Public / Authentication route group
+│   │   ├── _layout.jsx   # Layout wrapper for authentication screens
+│   │   └── login.jsx     # Login screen (Plain layout, fully functional)
+│   └── _layout.jsx       # Global root layout (Auth provider & redirection router)
+├── components/           # Reusable UI components
+│   ├── Button.jsx        # Plain, customizable button component
+│   └── Input.jsx         # Plain text input field with error handling
+├── constants/            # Global application variables
+│   └── Colors.js         # Theme color definitions (Light & Dark modes)
+├── context/              # Global state contexts
+│   └── AuthContext.js    # Authentication and session state provider
+├── hooks/                # Custom React hooks
+│   └── useAuth.js        # Easy-to-use hook to consume the AuthContext
+└── services/             # API clients and business layer services
+    └── authService.js    # Mock authentication API client
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## 🔑 Authentication Credentials
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+The app features a fully working mock authentication client to simulate real-world API requests. To test logging in:
 
-## Learn more
+*   **Email**: `admin@corporate.com`
+*   **Password**: `password123`
 
-To learn more about developing your project with Expo, look at the following resources:
+*Note: Validation errors will trigger on invalid email formatting, empty values, or incorrect credentials.*
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 🚀 Getting Started
 
-Join our community of developers creating universal apps.
+### 1. Install Dependencies
+Ensure you have all npm packages installed:
+```bash
+npm install
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 2. Start the App
+Start the Expo development server:
+```bash
+npm start
+```
+
+Use the console commands to test the application on different platforms:
+*   Press `a` to run on an **Android** emulator/device.
+*   Press `i` to run on an **iOS** simulator/device.
+*   Press `w` to run on a **Web** browser.
+
+---
+
+## 🛠 Coding Standard & Practices
+
+*   **JavaScript/JSX Only**: Do not use TypeScript (`.ts`/`.tsx`). All frontend UI elements and screens must be written in JSX.
+*   **Plain UI**: Styles are kept structured but plain for general layout and spacing. Decorative styling and themes can be added later.
+*   **Separation of Concerns**: Keep components lightweight. Place API request mockups in `services/`, state providers in `context/`, and route definitions in `app/`.
+*   **DRY Principles**: Utilize custom inputs (`Input.jsx`) and buttons (`Button.jsx`) to keep screen styling simple and avoid duplicating structural elements.
